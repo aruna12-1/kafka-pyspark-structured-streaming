@@ -1,0 +1,26 @@
+
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+
+from pyspark.sql.types import *
+
+
+if __name__ == "__main__":
+    spark = SparkSession.builder.appName("Spark Kafka Structured Streaming").master("local").getOrCreate()
+    spark.sparkContext.setLogLevel("Error")
+
+    json_schema = StructType([StructField("message", StringType(), False),StructField("iss_position", StructType([StructField("longitude",
+                  StringType(),False), StructField("latitude", StringType(), False)]),False)])
+    sdf = spark.readStream.format("kafka") \
+        .option("kafka.bootstrap.servers", "localhost:9092") \
+        .option("subscribe", "JSONtopic") \
+        .load()
+
+    sdf1 = sdf.selectExpr("CAST(value AS STRING) as data ")
+
+    df1 = sdf1.select(F.from_json(sdf1.data, json_schema).alias ("parsed_value"))
+
+    out_df = df1.select("parsed_value.message","parsed_value.iss_position.longitude","parsed_value.iss_position.latitude")
+    ##out_df.writeStream.format("console").option("truncate", "False").outputMode("append").start().awaitTermination()
+    
+    out_df.writeStream.format("csv").option("checkpointLocation", "/user/chkpop1").option("path", "/user/outpath1").start().awaitTermination()

@@ -1,0 +1,17 @@
+from kafka import KafkaProducer
+from time import sleep
+import requests
+import json
+
+
+bootstrap_servers = ['localhost:9092']
+
+producer=KafkaProducer(bootstrap_servers = bootstrap_servers,api_version=(0, 10, 1),value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+
+
+for i in range(100):
+     req=requests.get("http://api.open-notify.org/iss-now.json")
+     response=json.loads(req.content)
+     print(response)
+     producer.send('JSONtopic',response)
+     ##print("message send")
